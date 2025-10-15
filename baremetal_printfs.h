@@ -5,18 +5,22 @@
 #define BAREMETAL_PRINTFS_H
 
 #define UART_BASE 0x10000000
+
+void print(const char* str);
+void print_int(int value);
+void print_float(float f);
+void printf(const char* fmt, ...);
+
 volatile uint8_t* const uart = (uint8_t*)UART_BASE;
 
-// 文字列を UART に出力
 void print(const char* str) {
     while (*str) {
         *uart = *str++;
     }
 }
 
-// 整数を UART に出力
 void print_int(int value) {
-    char buf[12]; // -2147483648 まで対応
+    char buf[12];
     int i = 0;
 
     if (value < 0) {
@@ -39,26 +43,80 @@ void print_int(int value) {
     }
 }
 
-// // 浮動小数点を UART に出力（小数4桁固定）
-// void print_float(float f) {
-//     int int_part = (int)f;
-//     int frac_part = (int)((f - int_part) * 10000); // 小数4桁
+void print_float(float f) {
+    uint32_t bits = *(uint32_t*)&f;
+    
+    // for(int i = 31; i >= 0; i--){
+    //     printf("%d", (bits >> i) & 1);
+    //     if(i % 4 == 0) printf(" ");
+    // }
+    // printf("\n");
 
-//     print_int(int_part);
-//     *uart = '.';
+    int sign = (bits >> 31) & 1;
+    int raw_exp = (bits >> 23) & 0xFF;
+    int exp  = raw_exp - 127;
 
-//     if (frac_part < 0) frac_part = -frac_part;
+    if(raw_exp == 0x00){
+        if((bits & 0x7FFFFF) == 0){
+            if(sign) printf("-");
+            printf("0.0\n");
+            return;
+        } else {
+            printf("n0.0\n");
+            return;
+        }
+    } else if(raw_exp == 0xFF){
+        if((bits & 0x7FFFFF) == 0){
+            if(sign) printf("-");
+            printf("inf\n");
+            return;
+        } else {
+            printf("NaN\n");
+            return;  
+        }
+    }
 
-//     // 桁揃え（小数4桁固定）
-//     int div = 1000;
-//     for (int i = 0; i < 4; i++) {
-//         *uart = '0' + (frac_part / div);
-//         frac_part %= div;
-//         div /= 10;
-//     }
-// }
+    if(exp < -22){
+        if(sign) printf("-");
+        printf("0.0\n");
+        return;
+    } else if(exp > 30){
+        if(sign) printf("-");
+        printf("overflow\n");
+        return;
+    }
+    // printf("Debug: sign=%d, exp=%d\n", sign, exp);
 
-// 簡易 printf
+    uint32_t frac = bits & 0x7FFFFF;
+    uint64_t mantissa = frac | 0x800000;
+
+    int int_part = (int)(mantissa >> (23 - exp));
+    uint64_t frac_part_bits = mantissa & ((1 << (23 - exp)) - 1);
+
+    int frac_top=0, frac_bottom;
+    int scale_exp = 23;
+    for(int i = 0; i < scale_exp; i++){
+        uint64_t bit = (frac_part_bits >> (22 - exp - i)) & 1;
+        // printf("bit %d: %d\n", i, bit);
+        frac_top = bit << (scale_exp - 1 - i) | frac_top;
+    }
+    frac_bottom = 1 << scale_exp;
+    uint64_t frac_part = (frac_top * 1000) / frac_bottom;
+
+    int display_bias = 0;
+    if(frac_part < 100) display_bias++;
+    if(frac_part < 10) display_bias++;
+
+    // printf("int_part: %d, frac_top: %d, frac_bottom: %d\n", int_part, frac_top, frac_bottom);
+    // printf("overflow check: %d\n", (frac_top * 1000));
+
+    if (sign) printf("-");
+    print_int(int_part);
+    printf(".");
+    for(int i = 0; i < display_bias; i++) printf("0");
+    print_int(frac_part);
+}
+
 void printf(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -73,10 +131,12 @@ void printf(const char* fmt, ...) {
                 const char* s = va_arg(args, const char*);
                 print(s);
             // } else if (*fmt == 'f') {
-            //     float f = (float)va_arg(args, double); // float は promote で double になる
+            //     double d = va_arg(args, double);
+            //     uint64_t bits = (*(uint64_t*)&d);
+            //     float f = *(float*)&bits;
             //     print_float(f);
             } else {
-                *uart = *fmt; // 未対応フォーマットはそのまま出力
+                *uart = *fmt;
             }
         } else {
             *uart = *fmt;
