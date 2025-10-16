@@ -62,14 +62,6 @@ inline void print_uint64(uint64_t value) {
 inline void print_float(float f, int decimal_precision=3) {    
     uint32_t bits = *(uint32_t*)&f;
 
-    printf("\n===== float =====\n");
-    printf("\n[");
-    for(int i = 31; i >= 0; i--){
-        printf("%d", (bits >> i) & 1);
-        if(i % 4 == 0) printf(" ");
-    }
-    printf("]\n");
-
     int sign = (bits >> 31) & 1;
     int raw_exp = (bits >> 23) & 0xFF;
     int exp  = raw_exp - 127;
