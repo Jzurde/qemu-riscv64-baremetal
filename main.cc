@@ -1,6 +1,8 @@
 #include "baremetal_printfs.h"
 
 int main() {
+    *uart = 'A';
+
     int i = 5;
     float f = 3.1415;
     printf("Hello, baremetal world! This is the %dth time of trying!\n", i);
