@@ -3,7 +3,11 @@ This project provides simple printf function that works on baremetal(without os 
 
 ## How things work
 ```
-$ ./script.sh
+$ ./s-boot.sh // execute via OPEN SBI(S-mode)
+```
+or
+```
+$ ./m-boot.sh // execute without OPEN SBI(M-mode)
 ```
 Note, this will require `riscv64-unknown-elf-g++` to be build and install in advance with --march: imac, with designated PATH added, and off course `qemu-system-riscv64`.
 
