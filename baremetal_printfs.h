@@ -16,13 +16,7 @@ int get_int_digits(int value);
 
 volatile uint8_t* const uart = (uint8_t*)UART_BASE;
 
-void print(const char* str) {
-    while (*str) {
-        *uart = *str++;
-    }
-}
-
-void print_int(int value) {
+inline void print_int(int value) {
     char buf[12];
     int i = 0;
 
@@ -46,7 +40,7 @@ void print_int(int value) {
     }
 }
 
-void print_uint64(uint64_t value) {
+inline void print_uint64(uint64_t value) {
     char buf[21];
     int i = 0;
 
@@ -65,7 +59,7 @@ void print_uint64(uint64_t value) {
     }
 }
 
-void print_float(float f, int decimal_precision=3) {    
+inline void print_float(float f, int decimal_precision=3) {    
     uint32_t bits = *(uint32_t*)&f;
 
     printf("\n===== float =====\n");
@@ -142,23 +136,7 @@ void print_float(float f, int decimal_precision=3) {
     print_uint64(frac_part);
 }
 
-int get_int_digits(int value){
-    int digits = 0;
-    if(value == 0) return 1;
-    while(value > 0){
-        digits++;
-        value /= 10;
-    }
-    return digits;
-}
-
-int get_pow(int base, int exp){
-    int result = 1;
-    for(int i = 0; i < exp; i++) result *= base;
-    return result;
-}
-
-void printf(const char* fmt, ...) {
+inline void printf(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
@@ -186,6 +164,29 @@ void printf(const char* fmt, ...) {
     }
 
     va_end(args);
+}
+
+// DO NOT USE FROM OTHER FILES
+void print(const char* str) {
+    while (*str) {
+        *uart = *str++;
+    }
+}
+
+int get_int_digits(int value){
+    int digits = 0;
+    if(value == 0) return 1;
+    while(value > 0){
+        digits++;
+        value /= 10;
+    }
+    return digits;
+}
+
+int get_pow(int base, int exp){
+    int result = 1;
+    for(int i = 0; i < exp; i++) result *= base;
+    return result;
 }
 
 #endif // BAREMETAL_PRINTFS_H
